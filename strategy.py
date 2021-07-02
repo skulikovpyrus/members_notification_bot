@@ -4,42 +4,46 @@ from utils import add_user_to_approvals_list, prepare_comment, send_comment
 
 class NotificationStrategy(ABC):
     @abstractmethod
-    def notify_users(self, members, task, token):
+    def notify_users(self, members, task, token, positions=None, departments=None):
         pass
 
 
 class NotifyAllUsers(NotificationStrategy):
-    def notify_users(self, members, task, token):
+    def notify_users(self, members, task, token, positions=None, departments=None):
         comment = prepare_comment(task)
         for member in members:
             comment = add_user_to_approvals_list(task, member["id"], comment)
         send_comment(task["id"], token, comment)
 
 
-class NotifyLeaders(NotificationStrategy):
-    def notify_users(self, members, task, token):
+class NotifyUsersByPosition(NotificationStrategy):
+    def notify_users(self, members, task, token, positions=None, departments=None):
+        if not positions:
+            return
         comment = prepare_comment(task)
-        leader_positions = ["Начальник", "Директор", "Руководитель"]
-        leaders = [member for member in members if "position" in member and member["position"] in leader_positions]
+        leaders = [member for member in members if "position" in member and member["position"] in positions]
         if leaders:
             for leader in leaders:
                 comment = add_user_to_approvals_list(task, leader["id"], comment)
             send_comment(task["id"], token, comment)
 
 
-class NotifyOfficeEmployees(NotificationStrategy):
-    def notify_users(self, members, task, token):
+class NotifyUsersByDepartment(NotificationStrategy):
+    def notify_users(self, members, task, token, positions=None, departments=None):
+        if not departments:
+            return
+        comment = prepare_comment(task)
+        employees = [member for member in members if "department_name" in member
+                     and member["department_name"] in departments]
+        if employees:
+            for employee in employees:
+                comment = add_user_to_approvals_list(task, employee["id"], comment)
+            send_comment(task["id"], token, comment)
 
 
-
-class NotifyProductionEmployees(NotificationStrategy):
-    def notify_users(self, members, task, token):
-        pass
-
-
-strategy_type_ids = {
-    0: NotifyAllUsers,
-    1: NotifyLeaders,
-    2: NotifyOfficeEmployees,
-    3: NotifyProductionEmployees
+strategy_types = {
+    1: NotifyAllUsers(),
+    2: NotifyUsersByPosition(),
+    3: NotifyUsersByDepartment(),
+    4: NotifyUsersByDepartment()
 }

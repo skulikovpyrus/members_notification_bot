@@ -1,9 +1,7 @@
 from flask import Flask
 from flask import request, Response
+from bot import NotificationBot
 import json
-import logging
-
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -15,6 +13,10 @@ def index():
 
         task = data["task"]
         token = data["access_token"]
+        settings = json.loads(data["bot_settings"])
+
+        bot = NotificationBot(task, token, settings)
+        bot.main()
 
     return Response(status=200)
 

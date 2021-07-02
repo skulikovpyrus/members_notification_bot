@@ -1,8 +1,5 @@
 import json
 import requests
-import hmac
-import hashlib
-from app import logger
 
 
 def get_token(login, secret):
@@ -14,7 +11,7 @@ def get_token(login, secret):
         headers={"Content-Type": "application/json"}
     )
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
 
     token = response.json()["access_token"]
     return token
@@ -24,7 +21,7 @@ def get_form(form_id, token):
     url = f"https://api.pyrus.com/v4/forms/{form_id}"
     response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
         return
     form = response.json()
     return form
@@ -34,17 +31,16 @@ def get_forms(token):
     url = f"https://api.pyrus.com/v4/forms"
     response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
     forms = response.json()["forms"]
     return forms
-
 
 
 def get_form_tasks(form_id, token):
     url = f"https://api.pyrus.com/v4/forms/{form_id}/register"
     response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
     tasks = response.json()["tasks"]
     return tasks
 
@@ -53,7 +49,7 @@ def get_task(task_id, token):
     url = f"https://api.pyrus.com/v4/tasks/{task_id}"
     response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
     task = response.json()
     return task["task"]
 
@@ -62,7 +58,7 @@ def get_members(token):
     url = f"https://api.pyrus.com/v4/members"
     response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
     members = response.json()["members"]
     return members
 
@@ -75,7 +71,7 @@ def send_comment(task_id, token, comment):
         data=json.dumps(comment)
     )
     if not response.status_code == 200 or "Error" in response.text:
-        logger.info(response.text)
+        print(response.text)
     return response
 
 
@@ -103,22 +99,18 @@ def get_field_by_id(fields: list, _id: int):
 def get_field_id_by_code(form, code, source_task_id, token):
     flat_fields = [field for field in get_flat_fields(form["fields"]) if "info" in field]
     fields_with_code = list(filter(lambda x: "code" in x["info"], flat_fields))
-
-    field_id = [field["id"] for field in fields_with_code if field["info"]["code"] == code]
-    if field_id:
-        return field_id[0]
-
-    comment = {"text": f"Не найдено поле по коду {code}, проверьте правильно ли вы ввели код поля"}
-    send_comment(source_task_id, token, comment)
+    field_ids = [field["id"] for field in fields_with_code if field["info"]["code"] == code]
+    if not field_ids:
+        print(f"Не найдено поле по коду {code}")
+        send_comment(source_task_id, token, {"text": f"Не найдено по коду {code}"})
+        return
+    return field_ids[0]
 
 
 def get_field_by_code(form, task, code, token):
     desired_field_id = get_field_id_by_code(form, code, task["id"], token)
     if not desired_field_id:
-        logger.info(f"Не найдено поле по коду {code}")
-        send_comment(task["id"], token, {"text": f"Не найдено по коду {code}"})
         return
-
     task_fields = get_flat_fields(task["fields"], is_form=False)
     desired_field = get_field_by_id(task_fields, desired_field_id)
     return desired_field
